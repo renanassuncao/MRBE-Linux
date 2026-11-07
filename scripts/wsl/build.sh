@@ -18,7 +18,7 @@ if [ -x /usr/bin/gnuinstall ]; then
     ln -sfn /usr/bin/gnuinstall "$WORK/host-tools/install"
     export PATH="$WORK/host-tools:$PATH"
 fi
-chmod +x "$ROOT/board/qemu-aarch64/rootfs-overlay/etc/init.d/S99mrbe"  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-diagnostico"  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-info"
+chmod +x "$ROOT/board/qemu-aarch64/rootfs-overlay/etc/init.d/S05mrbe-launcher" "$ROOT/board/qemu-aarch64/rootfs-overlay/etc/init.d/S99mrbe"  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-diagnostico"  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-info"
 for tool in make tar sha256sum; do command -v "$tool" >/dev/null || { echo "Dependencia ausente: $tool"; exit 2; }; done
 if [ ! -f "$BR_SRC/Makefile" ]; then
     echo "[MRBE] Obtendo Buildroot LTS $BR_VERSION"
@@ -35,9 +35,26 @@ if [ ! -f "$BR_SRC/Makefile" ]; then
     tar -tJf "$BR_ARCHIVE" >/dev/null || { echo 'Arquivo Buildroot invalido; remova o tar.xz e tente de novo'; exit 2; }
     tar -xJf "$BR_ARCHIVE" -C "$WORK"
 fi
+# olddefconfig conserva o .config antigo: uma mudanca no defconfig ou num
+# fragment nunca chegaria a quem ja compilou. Com o hash diferente, o defconfig
+# e reaplicado, kernel e BusyBox sao reconfigurados e o rootfs e reinstalado do
+# zero (some o que a config nova removeu); toolchain e pacotes compilados ficam.
+CONFIG_HASH="$(cd "$ROOT" && find configs board/qemu-aarch64 -maxdepth 1 -type f \( -name '*defconfig' -o -name '*.fragment' -o -name '*.config' \) -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d ' ' -f 1)"
+CONFIG_STAMP="$WORK/.mrbe-config.sha256"
+RECONFIGURE=()
 if [ ! -f "$OUT/.config" ]; then
     echo '[MRBE] Configurando Buildroot (primeira execucao)'
     make -C "$BR_SRC" O="$OUT" BR2_DL_DIR="$DL" BR2_EXTERNAL="$ROOT" mrbe_qemu_aarch64_defconfig
+elif [ "$CONFIG_HASH" != "$(cat "$CONFIG_STAMP" 2>/dev/null || true)" ]; then
+    echo '[MRBE] defconfig ou fragment mudou: reaplicando o defconfig (ajustes manuais no .config se perdem).'
+    make -C "$BR_SRC" O="$OUT" BR2_DL_DIR="$DL" BR2_EXTERNAL="$ROOT" mrbe_qemu_aarch64_defconfig
+    for pkg in linux busybox; do
+        if compgen -G "$OUT/build/$pkg-[0-9]*" >/dev/null; then RECONFIGURE+=("$pkg-reconfigure"); fi
+    done
+    if [ -d "$OUT/target" ]; then
+        rm -rf "$OUT/target"
+        find "$OUT/build" -name .stamp_target_installed -delete
+    fi
 else
     echo '[MRBE] Configuracao existente. Executando olddefconfig.'
     make -C "$BR_SRC" O="$OUT" BR2_DL_DIR="$DL" BR2_EXTERNAL="$ROOT" olddefconfig
@@ -53,7 +70,8 @@ if [ -d "$OUT/build" ] && { [ "$SRC_HASH" != "$PREVIOUS_HASH" ] || [ "${MRBE_FOR
 fi
 printf '%s\n' "[MRBE] Compilando com JOBS=$JOBS; log em $WORK/build.log"
 # pipefail conserva o codigo de erro original do make
-make -C "$BR_SRC" O="$OUT" BR2_DL_DIR="$DL" BR2_EXTERNAL="$ROOT" -j"$JOBS" 2>&1 | tee "$WORK/build.log"
+make -C "$BR_SRC" O="$OUT" BR2_DL_DIR="$DL" BR2_EXTERNAL="$ROOT" -j"$JOBS" "${RECONFIGURE[@]}" all 2>&1 | tee "$WORK/build.log"
 "$ROOT/scripts/wsl/check-build.sh"
 printf '%s\n' "$SRC_HASH" > "$STAMP"
+printf '%s\n' "$CONFIG_HASH" > "$CONFIG_STAMP"
 printf '%s\n' '[MRBE] Compilacao concluida. Execute: make console ou make gui'

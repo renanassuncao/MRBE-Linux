@@ -1,0 +1,47 @@
+#!/bin/sh
+# SysV init: a interface sobe antes da rede, para a tela aparecer logo; sem
+# cabo, o DHCP de S40network seguraria o boot por uns 3 s.
+PIDFILE=/run/mrbe-launcher.pid
+start() {
+    mkdir -p /var/log /run
+    [ -x /usr/bin/mrbe-launcher ] || { echo '[MRBE] launcher ausente'; return 1; }
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        echo '[MRBE] launcher ja iniciado'
+        return 0
+    fi
+    (
+        n=0
+        # GPU virtio pode aparecer depois do inicio do init.
+        while [ ! -c /dev/fb0 ] && [ "$n" -lt 30 ]; do
+            sleep 1
+            n=$((n + 1))
+        done
+        if [ ! -c /dev/fb0 ]; then
+            echo '[MRBE] /dev/fb0 indisponivel: modo console ativo'
+            exit 0
+        fi
+        echo '[MRBE] framebuffer encontrado, iniciando interface TV'
+        exec /usr/bin/mrbe-launcher
+    ) >> /var/log/mrbe-launcher.log 2>&1 &
+    echo $! > "$PIDFILE"
+}
+stop() {
+    if [ -f "$PIDFILE" ]; then
+        pid=$(cat "$PIDFILE")
+        kill "$pid" 2>/dev/null || true
+        # restart: o launcher novo so abre a tela depois que o antigo saiu.
+        n=0
+        while kill -0 "$pid" 2>/dev/null && [ "$n" -lt 20 ]; do
+            sleep 0.1
+            n=$((n + 1))
+        done
+        rm -f "$PIDFILE"
+    fi
+}
+case "$1" in
+    start) start ;;
+    stop) stop ;;
+    restart) stop; start ;;
+    *) echo "Uso: $0 {start|stop|restart}"; exit 1 ;;
+esac
+exit 0

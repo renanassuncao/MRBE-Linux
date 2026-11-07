@@ -7,6 +7,7 @@ class TestProject(unittest.TestCase):
         for f in ('VERSION','external.desc','external.mk','Config.in',
                   'configs/mrbe_qemu_aarch64_defconfig',
                   'board/qemu-aarch64/linux.fragment',
+                  'board/qemu-aarch64/rootfs-overlay/etc/init.d/S05mrbe-launcher',
                   'board/qemu-aarch64/rootfs-overlay/etc/init.d/S99mrbe'):
             self.assertTrue((ROOT/f).is_file(),f)
     def test_config(self):
@@ -19,6 +20,12 @@ class TestProject(unittest.TestCase):
     def test_boot_marker(self):
         s=(ROOT/'board/qemu-aarch64/rootfs-overlay/etc/init.d/S99mrbe').read_text()
         self.assertIn('MRBE_BOOT_OK',s)
+    def test_launcher_starts_before_network(self):
+        # Sem cabo, o DHCP de S40network segura o boot; a tela nao deve esperar.
+        init=ROOT/'board/qemu-aarch64/rootfs-overlay/etc/init.d'
+        launcher=[f.name for f in init.iterdir() if 'exec /usr/bin/mrbe-launcher' in f.read_text()]
+        self.assertEqual(launcher,['S05mrbe-launcher'])
+        self.assertLess(int(launcher[0][1:3]),40)
     def test_status(self):
         s=json.loads((ROOT/'status.json').read_text())
         self.assertEqual(s['version'],'0.4.0')
