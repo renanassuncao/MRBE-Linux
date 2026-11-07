@@ -87,7 +87,7 @@ static void disk(View *v,int cx,int cy,int radius,MrbeColor c){
 }
 static void background(View *v) {
     int y;
-    mrbe_fb_clear(v->fb,BG);
+    /* As faixas cobrem a tela inteira; limpar antes seria pintar tudo duas vezes. */
     for(y=0;y<720;y+=8){
         MrbeColor c={ (unsigned char)(7+y/190), (unsigned char)(11+y/110),
                       (unsigned char)(9+y/180)};

@@ -15,6 +15,12 @@ No modo gráfico:
 - o init tenta iniciar `/usr/bin/mrbe-launcher` se `/dev/fb0` existir;
 - o launcher desenha quatro cartões.
 
+Enquanto o launcher está na tela, o terminal virtual fica em modo gráfico: o
+console do kernel não desenha cursor nem mensagens por cima da interface. Ao
+parar o launcher, o console de texto volta. A
+linha `mrbe-launcher: primeira tela` no `dmesg` marca quando a interface
+apareceu, no mesmo relógio das mensagens de boot.
+
 ## Controles do launcher
 
 | Tecla | Ação |

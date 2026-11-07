@@ -44,3 +44,5 @@ Se a versão BusyBox não oferecer essas opções, use `ps` e `/proc/<pid>/statu
 ## Cuidado com resolução
 
 Um framebuffer 1920x1080 em 32 bits ocupa cerca de 7,9 MiB por buffer. Dois buffers ocupam cerca de 15,8 MiB, sem contar outros buffers e estruturas. Em 1280x720, o custo é menor. Por isso, o primeiro teste gráfico é em resolução moderada.
+
+O launcher desenha num back buffer em RAM do tamanho da área visível e copia o quadro pronto para `/dev/fb0`, para a tela nunca mostrar um quadro pela metade. Isso custa cerca de 3,5 MiB em 1280x720 e 7,9 MiB em 1920x1080. Se a alocação falhar, ele desenha direto no framebuffer, como antes.

@@ -65,6 +65,7 @@ int mrbe_input_next(MrbeInput *input, int timeout_ms)
     int i, result;
     if (!input || input->count == 0) {
         struct timespec delay;
+        if (timeout_ms <= 0) return MRBE_KEY_NONE;
         delay.tv_sec = timeout_ms / 1000;
         delay.tv_nsec = (long)(timeout_ms % 1000) * 1000000L;
         nanosleep(&delay, NULL);
@@ -81,6 +82,12 @@ int mrbe_input_next(MrbeInput *input, int timeout_ms)
     if (result <= 0) return MRBE_KEY_NONE;
 
     for (i = 0; i < input->count; ++i) {
+        if (descriptors[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            /* Unplugged device: poll reports it forever and the loop would spin
+             * at 100% CPU. Drop all descriptors; the caller rescans /dev/input. */
+            mrbe_input_close(input);
+            return MRBE_KEY_NONE;
+        }
         if (descriptors[i].revents & POLLIN) {
             struct input_event event;
             ssize_t bytes = read(descriptors[i].fd, &event, sizeof(event));
