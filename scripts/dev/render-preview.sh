@@ -8,23 +8,23 @@ CC="${CC:-cc}"
 "$CC" -std=c11 -Os -Wall -Wextra -Werror \
     -DMRBE_LOGO_PATH=\"$SRC/assets/brasao-256.rgba\" \
     -o "$TMP/mrbe-preview" "$SRC/preview.c" "$SRC/ui.c" "$SRC/fb.c" "$SRC/font.c"
-for view in home apps settings; do
-    if [ "$view" = home ]; then
-        "$TMP/mrbe-preview" "$TMP/preview-home.ppm"
-        name="preview-mrbe-tv"
-    else
-        "$TMP/mrbe-preview" "$TMP/preview-${view}.ppm" "$view"
-        name="preview-mrbe-${view}"
-    fi
+
+if [ "${MRBE_PREVIEW_QUICK:-0}" = "1" ]; then
+    screens=(home apps store settings)
+else
+    screens=(home apps store library details films series sports kids search settings)
+fi
+for view in "${screens[@]}"; do
+    "$TMP/mrbe-preview" "$TMP/${view}.ppm" "$view"
     if python3 -c 'from PIL import Image' >/dev/null 2>&1; then
-        python3 - "$TMP/preview-${view}.ppm" "$ROOT/docs/${name}.png" <<'PYTHON'
+        python3 - "$TMP/${view}.ppm" "$ROOT/docs/preview-mrbe-${view}.png" <<'PYTHON'
 import sys
 from PIL import Image
 Image.open(sys.argv[1]).save(sys.argv[2], optimize=True)
-print('Previa PNG:',sys.argv[2])
+print('Previa PNG:', sys.argv[2])
 PYTHON
     else
-        cp "$TMP/preview-${view}.ppm" "$ROOT/docs/${name}.ppm"
-        echo "Previa PPM: docs/${name}.ppm (python3-pil para PNG)"
+        cp "$TMP/${view}.ppm" "$ROOT/docs/preview-mrbe-${view}.ppm"
+        echo "Previa PPM: docs/preview-mrbe-${view}.ppm (python3-pil para PNG)"
     fi
 done

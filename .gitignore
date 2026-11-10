@@ -9,4 +9,7 @@ __pycache__/
 *.tmp
 logs/testes/*
 !logs/testes/.gitkeep
-!docs/preview-mrbe-tv.png
+!logs/testes/historico/
+!logs/testes/historico/*.log
+!logs/testes/historico/*.json
+!docs/preview-mrbe-*.png

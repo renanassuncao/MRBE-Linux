@@ -18,7 +18,12 @@ if [ -x /usr/bin/gnuinstall ]; then
     ln -sfn /usr/bin/gnuinstall "$WORK/host-tools/install"
     export PATH="$WORK/host-tools:$PATH"
 fi
-chmod +x "$ROOT/board/qemu-aarch64/rootfs-overlay/etc/init.d/S99mrbe"  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-diagnostico"  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-info"
+chmod +x "$ROOT/board/qemu-aarch64/rootfs-overlay/etc/init.d/S99mrbe" \
+  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-diagnostico" \
+  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-info" \
+  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-api-test" \
+  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-healthcheck" \
+  "$ROOT/board/qemu-aarch64/rootfs-overlay/usr/bin/mrbe-stability-test"
 for tool in make tar sha256sum; do command -v "$tool" >/dev/null || { echo "Dependencia ausente: $tool"; exit 2; }; done
 if [ ! -f "$BR_SRC/Makefile" ]; then
     echo "[MRBE] Obtendo Buildroot LTS $BR_VERSION"
@@ -39,7 +44,9 @@ if [ ! -f "$OUT/.config" ]; then
     echo '[MRBE] Configurando Buildroot (primeira execucao)'
     make -C "$BR_SRC" O="$OUT" BR2_DL_DIR="$DL" BR2_EXTERNAL="$ROOT" mrbe_qemu_aarch64_defconfig
 else
-    echo '[MRBE] Configuracao existente. Executando olddefconfig.'
+    echo '[MRBE] Configuracao existente. Mesclando requisitos da versao 0.7.0.'
+    # olddefconfig alone does NOT import new options from the external defconfig.
+    "$ROOT/scripts/wsl/ensure-api-config.sh" "$OUT/.config"
     make -C "$BR_SRC" O="$OUT" BR2_DL_DIR="$DL" BR2_EXTERNAL="$ROOT" olddefconfig
 fi
 # Buildroot caches packages using stamp files. A source update must explicitly

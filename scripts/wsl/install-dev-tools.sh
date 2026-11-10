@@ -7,7 +7,7 @@ sudo apt-get install -y \
   build-essential gcc g++ make bc bison flex \
   file git wget curl rsync cpio unzip xz-utils \
   patch perl python3 python3-venv \
-  libncurses-dev libssl-dev libelf-dev zlib1g-dev \
+  libncurses-dev libssl-dev openssl libelf-dev zlib1g-dev \
   device-tree-compiler \
   qemu-system-arm qemu-system-gui qemu-utils
 

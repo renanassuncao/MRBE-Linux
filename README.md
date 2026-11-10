@@ -1,89 +1,105 @@
-# MRBE Linux TV 0.4.0
+# MRBE TV OS 0.7.0
 
 [![Estado](https://img.shields.io/badge/estado-prot%C3%B3tipo-yellow)](#estado) [![Licenca](https://img.shields.io/badge/launcher-MIT-blue)](LICENSE)
 
-Sistema Linux embarcado **experimental** para interfaces de TV em baixo consumo
-de recursos. Mantem continuidade do **MRBE Linux DevKit 0.1.0**, construido sobre
-Buildroot. Inspirado em navegacao direcional de smart TVs, **nao e Android nem Google TV**.
+Sistema Linux embarcado **experimental** para TV Box, com launcher framebuffer C e identidade visual MRBE original. A Home 0.6.0 aprovada permanece inalterada na versão 0.7.0, com arte cinematográfica, recomendações em cartões e tiles de aplicativos. O projeto é inspirado em padrões de navegação de Smart TVs, sem reproduzir a interface proprietária de Samsung/Tizen.
 
-> Hardware: o nome MXQ Pro abrange plataformas diferentes. Este codigo nao cria
-> imagem pronta para gravar no TV Box. A imagem QEMU nao deve ser gravada nele.
+> **Importante:** QEMU `virt` AArch64 é uma máquina virtual de desenvolvimento, não um TV Box Amlogic. A imagem QEMU não deve ser gravada no equipamento físico.
 
-## Primeiros passos (Windows 11 / WSL2 Ubuntu)
+## Executar no Windows 11 / WSL2 Ubuntu
 
-Abra PowerShell como administrador **uma vez**:
+Abra PowerShell como administrador uma vez:
 
 ```powershell
-wsl --install -d Ubuntu
+wsl --install -d Ubuntu-24.04
 wsl --update
 ```
 
-Reinicie o Windows quando solicitado, abra o Ubuntu e crie usuario/senha.
-Extraia este ZIP em uma pasta de usuario do Ubuntu (ex.: `~/MRBE-Linux`).
-Se baixar no Windows, copie com `cp -r /mnt/c/Users/<USUARIO>/Downloads/MRBE-Linux ~/`;
-ou descompacte diretamente no Ubuntu. Evite compilar no `/mnt/c` (lento).
+No Ubuntu, mantenha o projeto no filesystem Linux (`~/MRBE-Linux`), não em `/mnt/c`, para compilar mais rápido.
 
 ```bash
 cd ~/MRBE-Linux
 chmod +x scripts/wsl/*.sh scripts/dev/*.sh
 make setup
-make test             # checagens locais + previa visual
-JOBS=2 make build     # primeira compilacao (ou atualizacoes)
-make ui-rebuild      # ao atualizar a interface, reconstruir pacote e imagens
+make test
+JOBS=2 make ui-rebuild
 make check
-make smoke            # exige a imagem compilada; timeout padrao 150 s
-make console          # console serial QEMU; Ctrl+A e depois X para sair
-make gui              # opcional: janela com launcher (WSLg ativo)
+make smoke
+make gui
 ```
 
-### Atualizar da versão 0.2.0 sem perder a compilação
+A janela QEMU usa 4 GiB de RAM e solicita 1280x720. Para experimentar Full HD:
 
-Copie o ZIP para `~/` e execute `unzip -o MRBE_Linux_0_4_0.zip -d ~`; depois `make test && JOBS=2 make ui-rebuild && make smoke && make gui`. **Não remova `work/`**. Leia [o guia de atualização](docs/21-IDENTIDADE-VISUAL-0.4.md).
+```bash
+DISPLAY_WIDTH=1920 DISPLAY_HEIGHT=1080 make gui
+```
 
-### Estado
-O repositorio inclui **fontes**, scripts e testes. Nao inclui firmware nem
-uma imagem Linux compilada. Consulte [STATUS.md](STATUS.md).
+Se a versão do QEMU não aceitar `xres`/`yres`:
 
-### Documentacao por fase
+```bash
+GPU_DEVICE=virtio-gpu-pci make gui
+```
+
+## Atualizar da versão 0.6.0 sem perder a compilação
+
+1. Faça backup opcional dos fontes.
+2. Extraia o pacote 0.7.0 em `~/`, permitindo sobrescrever os fontes/documentos.
+3. **Não apague `work/`**: ela contém a saída/cache Buildroot local.
+4. Execute `make test && JOBS=2 make ui-rebuild && make check && make smoke && make gui`.
+
+## Home visual preservada na versão 0.7.0
+
+- Hero cinematográfico com título, ações e status superior.
+- Cinco artes de conteúdo recomendado.
+- Nove tiles: MRBE Play, MRBE Canais, MRBE Filmes, Netflix, Prime Video, Disney+, Max, YouTube e Todos os apps.
+- Menu lateral de sete destinos com ícones e rótulos antialias.
+- Navegação por controle remoto/teclado e mouse.
+- Assets instalados no rootfs em `/usr/share/mrbe/ui/`.
+- Smoke test exige confirmação explícita de que os assets foram carregados.
+
+Netflix, Disney+, Prime Video e Max continuam como tiles demonstrativos: não há APK, DRM/Widevine nem reprodução oficial neste Linux/QEMU.
+
+## Estado
+
+Os testes host verificam compilação C, lógica de navegação, assets e prévias. O boot ARM64/QEMU 0.7.0 ainda precisa ser reconstruído e validado no WSL do usuário.
+
+Consulte [STATUS.md](STATUS.md), [MANIFEST.md](MANIFEST.md) e [Home cinematográfica 0.6.0](docs/25-HOME-CINEMATOGRAFICA-0.6.0.md).
+
+## Documentação por fase
 - [Guia iniciante](docs/12-GUIA-INICIANTE-0.2.md)
 - [Arquitetura do boot](docs/13-BOOT-QEMU-E-HARDWARE.md)
 - [Teste e aceite](docs/14-TESTES-E-EVIDENCIAS.md)
-- [Otimizacao 1 GiB](docs/15-OTIMIZACAO-TANENBAUM.md)
 - [Hardware MXQ Pro](docs/16-IDENTIFICACAO-MXQ-PRO.md)
-- [Publicar no GitHub](docs/17-PUBLICAR-GITHUB.md)
-- [Interface TV 0.4.0 e identidade visual](docs/21-IDENTIDADE-VISUAL-0.4.md)
-- [Proximos marcos](docs/18-ROADMAP.md)
-- [Seguranca e limites](docs/19-SEGURANCA-E-LICENCAS.md)
+- [Identidade visual 0.4.0](docs/21-IDENTIDADE-VISUAL-0.4.md)
+- [Implementação 0.5.1](docs/24-IMPLEMENTACAO-0.5.1.md)
+- [Home cinematográfica 0.6.0](docs/25-HOME-CINEMATOGRAFICA-0.6.0.md)
+- [Estabilidade e APIs 0.7.0](docs/26-ESTABILIDADE-APIS-0.7.0.md)
+- [Roadmap](docs/18-ROADMAP.md)
+- [Segurança e licenças](docs/19-SEGURANCA-E-LICENCAS.md)
 
-![Previa do launcher framebuffer](docs/preview-mrbe-tv.png)
+![Prévia da Home MRBE TV OS 0.7.0](docs/preview-mrbe-home.png)
 
-![Brasao MRBE](arte/identidade-visual/brasao-mrbe-256.png)
+[Ver sequência completa das telas](docs/preview-mrbe-sequence.png)
 
-## Comandos
-`make help` | `make test` | `make preview` | `make build` | `make check` |
-`make smoke` | `make console` | `make gui` | `make ui-rebuild`.
 
-## Contribuicao
-Abra issue ou pull request com logs reproduziveis; leia [CONTRIBUTING.md](CONTRIBUTING.md).
+## Diagnósticos de API e estabilidade (0.7.0)
 
-## Licencas
-Codigo original do launcher: MIT. O **conjunto do projeto** usa diversos pacotes
-com licencas proprias (kernel Linux GPL-2.0-only, BusyBox GPL-2.0-only,
-Buildroot GPL-2.0-or-later); siga os requisitos de distribuicao de cada pacote.
-Nao redistribuir codigos proprietarios nem marcas ou logos de Google/Netflix.
+No QEMU, após o boot:
 
-<!-- MRBE-DOCS-070:START -->
+```sh
+mrbe-healthcheck
+mrbe-api-test
+MRBE_STABILITY_DURATION=300 mrbe-stability-test
+```
 
-## Documentação técnica — MRBE TV OS 0.7.0
+O teste de API usa por padrão um endpoint público de demonstração JSONPlaceholder. Para testar outra API GET:
 
-- [Instalação em outra máquina](docs/30-GUIA-INSTALACAO-MRBE-070.md)
-- [Buildroot e correções](docs/31-BUILDROOT-CORRECOES-070.md)
-- [Qualidade, APIs e estabilidade](docs/32-QUALIDADE-TESTES-API-070.md)
+```sh
+MRBE_API_URL="https://seu-endpoint/health" \
+MRBE_API_EXPECT_PATTERN='"status"[[:space:]]*:[[:space:]]*"ok"' \
+mrbe-api-test
+```
 
-**Estado:** versão experimental. A compilação ARM64
-e os testes completos no QEMU ainda precisam
-ser homologados.
+A validação TLS permanece habilitada. Não use `curl -k` em produção. Nenhum endpoint comercial, token ou chave de API foi fornecido/configurado nesta versão.
 
-**Observação de versionamento:** o arquivo `VERSION` nesta branch informa `0.4.0`, diferente do nome da branch. Essa divergência precisa ser revisada antes de uma release oficial.
-
-<!-- MRBE-DOCS-070:END -->
+No host, `make api-test` executa testes HTTP determinísticos contra um servidor local simulado; `make test` executa a suíte completa.

@@ -1,0 +1,40 @@
+MRBE TV OS 0.7.0 — EVIDÊNCIA DE VALIDAÇÃO HOST
+Data: 2026-11-06
+Base: fonte 0.6.0 preservada; fase 0.7.0 de estabilidade e API.
+
+RESULTADOS EXECUTADOS
+- make api-test: PASS — 13 testes específicos de API/estabilidade.
+- make test: PASS — 33 testes totais.
+- Bash syntax: PASS.
+- POSIX shell syntax para scripts do rootfs: PASS.
+- C launcher: compilação/sintaxe com -Wall -Wextra -Werror: PASS.
+- Clang Static Analyzer nos 6 fontes C: PASS, sem diagnósticos.
+- Harness da máquina de estados com 20.000 eventos determinísticos: PASS.
+- AddressSanitizer + UndefinedBehaviorSanitizer no harness UI: PASS.
+- API mock HTTP 200: PASS.
+- API mock HTTP 503: erro corretamente identificado.
+- Payload JSON inesperado: rejeitado.
+- Content-Type incorreto: rejeitado.
+- HTTPS com certificado autoassinado não confiável: rejeitado.
+- HTTPS com CA explicitamente confiável: PASS.
+- Script API executado com BusyBox ash: PASS.
+- Migração do .config Buildroot 0.6.x preservando opções não relacionadas e ativando curl/TLS/CA: PASS.
+- Monitor de estabilidade: amostragem local e condições de falha testadas.
+- Pré-renderizações host: PASS.
+
+TESTE DE INTERNET EXTERNA
+- Tentativa de acesso ao endpoint padrão https://jsonplaceholder.typicode.com/todos/1.
+- Resultado neste ambiente: curl exit 6, falha de resolução DNS.
+- Portanto, conectividade com API pública NÃO está aprovada nesta sessão; deve ser testada dentro do WSL/QEMU do usuário.
+
+PENDENTE NO AMBIENTE DO USUÁRIO
+- Buildroot ARM64 0.7.0 com curl/libcurl, OpenSSL e certificados CA.
+- make check e make smoke no WSL.
+- Boot gráfico 0.7.0 no QEMU.
+- mrbe-healthcheck e mrbe-api-test dentro do guest com rede externa.
+- mrbe-stability-test por 300 segundos no guest com launcher ativo.
+
+LIMITES
+- Os testes HTTP/HTTPS host usam servidor mock local e não representam APIs comerciais.
+- Nenhuma API de streaming ou credencial de produção foi configurada.
+- O QEMU virt AArch64 não certifica o hardware S905X3.

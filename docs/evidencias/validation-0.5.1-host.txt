@@ -1,0 +1,29 @@
+MRBE TV OS 0.5.1 — EVIDÊNCIA DE VALIDAÇÃO HOST
+Data do pacote: 2026-11-06
+Base: código-fonte MRBE TV OS 0.5.0 fornecido na conversa.
+
+Resultado:
+- scripts bash: PASS
+- scripts sh: PASS
+- compilação C nativa/preview: PASS
+- JSON e documentos: PASS
+- testes Python: 16/16 PASS
+- compilação isolada input.c com -Wall -Wextra -Werror: PASS
+- prévias das 11 telas: PASS
+- sintaxe run-qemu-gui.sh: PASS
+- py_compile scripts e testes: PASS
+
+Alterações incluídas:
+- solicitação de 1280x720 no QEMU via xres/yres e video=Virtual-1;
+- canvas com escala uniforme e letterboxing para framebuffers 4:3;
+- eventos evdev para mouse relativo, clique esquerdo, clique direito e roda;
+- ponteiro gráfico e hit-testing para Home, sidebar, grids, detalhes, configurações,
+  pesquisa, categorias e painel rápido;
+- barra inferior abreviada para evitar corte.
+
+Limite desta evidência:
+- Este relatório é de validação no host e testes automatizados.
+- Não comprova compilação Buildroot ARM64, boot no QEMU do usuário ou comportamento
+  físico do mouse na janela QEMU.
+- Esses gates continuam pendentes de `make ui-rebuild`, `make check`, `make smoke`
+  e `make gui` no WSL do usuário.

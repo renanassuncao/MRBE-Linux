@@ -1,39 +1,66 @@
 {
-  "project": "MRBE Linux TV",
-  "version": "0.4.0",
+  "project": "MRBE TV OS",
+  "version": "0.7.0",
   "date": "2026-11-06",
   "architecture": "aarch64",
   "board": "qemu-virt",
-  "ram_target_mib": 1024,
+  "ram_target_mib": 4096,
   "buildroot_version": "2025.02.19",
   "linux_kernel": "6.12.27",
+  "visual_identity": "0.6.0_frozen_no_visual_changes_in_stability_release",
+  "network": "QEMU user-mode virtio-net + DHCP",
+  "api_client": "curl + OpenSSL TLS + system CA bundle",
+  "api_test_endpoint_default": "https://jsonplaceholder.typicode.com/todos/1",
+  "api_auth": "not configured; user has not supplied a production API endpoint or credentials",
+  "guest_commands": [
+    "mrbe-healthcheck",
+    "mrbe-api-test",
+    "mrbe-stability-test"
+  ],
+  "host_tests": "33_passed_including_13_API_stability_TLS_and_config_migration_tests",
+  "build": "pending user WSL Buildroot rebuild",
+  "qemu_boot": "pending_user_WSL_build_QEMU_smoke_and_guest_api",
+  "qemu_api": "host_external_DNS_unavailable; guest_QEMU_validation_pending",
+  "qemu_stability": "pending_user_guest_5_minute_test",
+  "store": "catalog demo only; no proprietary streaming or DRM",
+  "hardware_s905x3": "blocked exact board and BSP identification",
+  "phases": {
+    "base": "0.4_qemu_arm64_source_preserved",
+    "branding": "0.6.0_visual_identity_frozen_no_layout_changes",
+    "static_tests": "PASS_33_tests_and_host_previews",
+    "build": "pending_user_WSL_Buildroot_rebuild",
+    "qemu_boot": "pending_user_WSL_build_and_make_smoke",
+    "qemu_gui": "pending_user_WSL_visual_and_input_validation",
+    "api_diagnostics": "13_host_mock_HTTP_HTTPS_TLS_tests_passed; guest_external_API_pending",
+    "stability": "host_script_tests_passed; 5_minute_guest_monitor_pending",
+    "store": "catalog_demo_only",
+    "hardware_s905x3": "blocked_exact_board_and_BSP_identification"
+  },
   "brand_identity": {
-    "crest": "integrated_rgba_256",
     "palette": [
       "charcoal",
       "emerald",
       "gold",
       "silver"
     ],
+    "visual_layout": "0.6.0_frozen",
     "screens": [
       "home",
+      "guide",
       "apps",
-      "settings"
+      "store",
+      "search",
+      "library",
+      "settings",
+      "details",
+      "films",
+      "series",
+      "sports",
+      "kids",
+      "quick_panel"
     ]
   },
-  "buildroot_image": "needs_0.4_rebuild_on_user_WSL",
-  "qemu_boot": "0.2_reported_working_by_user; 0.4_pending",
-  "qemu_gui": "0.4_pending_user_test",
-  "hardware_mxq_pro": "blocked_soc_unknown",
-  "media_player": "not_included",
-  "drm_streaming": "not_included",
-  "phases": {
-    "base": "0.3_framebuffer_bootable_source_preserved",
-    "branding": "0.4_implemented_source_and_assets",
-    "static_tests": "passed_host_2026-11-06_12_tests",
-    "build": "pending_user_0.4_rebuild",
-    "qemu": "pending_user_0.4_test",
-    "lvgl_migration": "planned_0.5",
-    "hardware": "blocked"
-  }
+  "buildroot_image": "requires_build_0.7.0_on_user_WSL",
+  "qemu_gui": "1280x720_requested_with_4GiB_RAM; user_WSL_validation_pending",
+  "host_test_result": "PASS_33_tests; C_static_analysis_clean; ASan_UBSan_UI_state_stress_20000_events_passed"
 }

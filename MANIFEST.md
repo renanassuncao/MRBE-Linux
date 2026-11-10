@@ -1,9 +1,23 @@
-# Manifesto de entrega 0.4.0
+# Manifesto — MRBE TV OS 0.7.0
 
-Incluidos: fontes C do launcher framebuffer, brasao MRBE e assets RGBA/PNG, scripts Bash, configuracao Buildroot, overlay do rootfs, testes locais, smoke test QEMU, previews das telas, PRD, STATUS, status.json, licenca do codigo e documentacao de atualizacao.
+## Incluído
+- Identidade visual 0.6.0 congelada.
+- curl/libcurl com OpenSSL e certificados CA selecionados no Buildroot.
+- Diagnóstico de sistema e rede (`mrbe-healthcheck`).
+- Teste de API HTTP/HTTPS (`mrbe-api-test`).
+- Monitor de estabilidade (`mrbe-stability-test`).
+- Smoke marker para presença das ferramentas API/CA.
+- Mesclagem automática das novas opções curl/TLS/CA no `.config` 0.6.x existente, preservando demais configurações.
+- 13 testes específicos de API/estabilidade; 33 testes totais aprovados no host.
+- Testes TLS com CA confiável e rejeição de certificado não confiável.
+- Análise estática C, ASan/UBSan e teste de navegação com 20 mil eventos.
+- Documentação e evidências de execução.
 
-Excluidos: binarios Buildroot compilados, kernel `Image` pronto, disco `rootfs.ext4`, ISO, firmware MXQ Pro, ROM/bootloader do fabricante, APKs, codecs proprietarios e servicos comerciais.
+## Ainda não comprovado
+- Build ARM64 no WSL do usuário.
+- Boot QEMU 0.7.0.
+- Comunicação externa do guest (DNS não disponível no ambiente host desta revisão).
+- Teste de estabilidade de 5 minutos no QEMU.
 
-**Validacao nesta entrega:** 12 testes locais passaram e o renderizador host gerou previews. A compilacao ARM64 e o boot QEMU da versao 0.4.0 ainda precisam ser executados no WSL do usuario.
-
-**Evidencias esperadas apos build:** `work/build.log`, `logs/testes/qemu-boot-latest.log` e captura da janela QEMU.
+## Fora do escopo desta versão
+- APIs privadas de streaming, autenticação de serviços comerciais, DRM/Widevine, instalação de APKs e suporte S905X3 físico.

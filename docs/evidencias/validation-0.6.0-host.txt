@@ -1,0 +1,21 @@
+MRBE TV OS 0.6.0 — EVIDÊNCIA DE VALIDAÇÃO HOST
+Data: 2026-11-06
+
+Executado no workspace de revisão:
+- bash scripts/dev/test-local.sh: PASS
+- 18 testes Python: PASS
+- compilação C host com -Wall -Wextra -Werror: PASS
+- sintaxe Bash/Shell: PASS
+- py_compile dos scripts e testes: PASS
+- prévias PNG das 11 telas em 1280x720: PASS
+- Home cinematográfica com hero, 5 cards, 9 tiles, 7 ícones e 7 rótulos: PASS
+- assets RGBA incluídos e verificados por tamanho: PASS
+- smoke runner exige MRBE_BOOT_OK, MRBE_HOME_ASSETS_READY, MRBE_UI_READY e MRBE_INPUT_READY: PASS
+
+PENDENTE:
+- Buildroot ARM64 real no WSL do usuário.
+- Boot MRBE TV OS 0.6.0 no QEMU.
+- Confirmação de que /usr/share/mrbe/ui contém os assets no rootfs.
+- Validação visual de 1280x720, mouse e teclado na janela QEMU.
+
+Esta evidência não declara o boot QEMU 0.6.0 aprovado. Os testes host não substituem o build e a execução no WSL.

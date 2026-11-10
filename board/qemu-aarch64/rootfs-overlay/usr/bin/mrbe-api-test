@@ -1,0 +1,101 @@
+#!/bin/sh
+# MRBE TV OS — HTTP/HTTPS API connectivity diagnostic.
+# TLS certificate validation remains enabled; never use curl -k here.
+set -u
+
+CURL_BIN="${MRBE_CURL_BIN:-curl}"
+API_URL="${MRBE_API_URL:-https://jsonplaceholder.typicode.com/todos/1}"
+EXPECTED_STATUS="${MRBE_API_EXPECT_STATUS:-200}"
+EXPECTED_PATTERN="${MRBE_API_EXPECT_PATTERN:-\"id\"[[:space:]]*:[[:space:]]*1}"
+EXPECT_JSON="${MRBE_API_EXPECT_JSON:-1}"
+CONNECT_TIMEOUT="${MRBE_API_CONNECT_TIMEOUT:-8}"
+TOTAL_TIMEOUT="${MRBE_API_TIMEOUT:-20}"
+CUSTOM_CA="${MRBE_API_CAINFO:-}"
+
+safe_url=$(printf '%s' "$API_URL" | sed 's#://[^/@]*:[^/@]*@#://***@#; s#\([?&][^=]*\)=\([^&]*\)#\1=REDACTED#g')
+
+printf '%s\n' '=== MRBE API CONNECTIVITY TEST ==='
+printf 'Endpoint: %s\n' "$safe_url"
+printf 'Expected HTTP: %s\n' "$EXPECTED_STATUS"
+
+for number in "$CONNECT_TIMEOUT" "$TOTAL_TIMEOUT" "$EXPECTED_STATUS"; do
+    case "$number" in
+        ''|*[!0-9]*) echo '[FAIL] Timeout/status configuration must be numeric.'; exit 2 ;;
+    esac
+done
+case "$API_URL" in
+    https://*|http://*) ;;
+    *) echo '[FAIL] API_URL must use HTTP or HTTPS.'; exit 2 ;;
+esac
+
+if ! command -v "$CURL_BIN" >/dev/null 2>&1; then
+    echo '[FAIL] curl is not installed. Rebuild with BR2_PACKAGE_LIBCURL_CURL=y.'
+    exit 2
+fi
+
+BODY=$(mktemp /tmp/mrbe-api-body.XXXXXX 2>/dev/null) || exit 2
+ERROR=$(mktemp /tmp/mrbe-api-error.XXXXXX 2>/dev/null) || { rm -f "$BODY"; exit 2; }
+trap 'rm -f "$BODY" "$ERROR"' EXIT HUP INT TERM
+
+START=$(date +%s 2>/dev/null || echo 0)
+set -- --silent --show-error \
+    --connect-timeout "$CONNECT_TIMEOUT" \
+    --max-time "$TOTAL_TIMEOUT" \
+    --output "$BODY" \
+    --write-out '%{http_code}|%{time_total}|%{content_type}|%{remote_ip}'
+if [ -n "$CUSTOM_CA" ]; then
+    if [ ! -s "$CUSTOM_CA" ]; then
+        echo '[FAIL] MRBE_API_CAINFO does not point to a readable CA certificate.'
+        exit 2
+    fi
+    set -- "$@" --cacert "$CUSTOM_CA"
+fi
+META=$("$CURL_BIN" "$@" "$API_URL" 2>"$ERROR")
+CURL_RC=$?
+END=$(date +%s 2>/dev/null || echo "$START")
+ELAPSED=$((END - START))
+
+if [ "$CURL_RC" -ne 0 ]; then
+    echo "[FAIL] Transport/DNS/TLS error (curl exit $CURL_RC, ${ELAPSED}s)."
+    if [ -s "$ERROR" ]; then sed -n '1,3p' "$ERROR"; fi
+    exit 1
+fi
+
+OLD_IFS=$IFS
+IFS='|'
+set -- $META
+IFS=$OLD_IFS
+HTTP_STATUS="${1:-000}"
+HTTP_TIME="${2:-unknown}"
+CONTENT_TYPE="${3:-unknown}"
+REMOTE_IP="${4:-unknown}"
+
+printf 'HTTP status: %s\n' "$HTTP_STATUS"
+printf 'Response time: %ss\n' "$HTTP_TIME"
+printf 'Content-Type: %s\n' "$CONTENT_TYPE"
+printf 'Remote IP: %s\n' "$REMOTE_IP"
+
+if [ "$HTTP_STATUS" != "$EXPECTED_STATUS" ]; then
+    echo "[FAIL] Expected HTTP $EXPECTED_STATUS, received $HTTP_STATUS."
+    exit 1
+fi
+
+if [ "$EXPECT_JSON" = '1' ]; then
+    case "$CONTENT_TYPE" in
+        *application/json*) ;;
+        *) echo '[FAIL] Response is not application/json.'; exit 1 ;;
+    esac
+fi
+
+if [ -n "$EXPECTED_PATTERN" ] && ! grep -Eq "$EXPECTED_PATTERN" "$BODY"; then
+    echo '[FAIL] Expected response pattern was not found in body.'
+    exit 1
+fi
+
+if [ ! -s "$BODY" ]; then
+    echo '[FAIL] Empty response body.'
+    exit 1
+fi
+
+echo '[PASS] DNS/connection, HTTP response, TLS verification (when HTTPS), and payload checks passed.'
+exit 0

@@ -18,25 +18,6 @@ static uint32_t mrbe_component(uint8_t value, struct fb_bitfield field)
     return (((uint32_t)value * maximum / 255u) & maximum) << field.offset;
 }
 
-static void mrbe_pixel(MrbeFramebuffer *fb, int x, int y, MrbeColor color)
-{
-    size_t offset;
-    uint32_t pixel;
-
-    if (!fb || !fb->memory) return;
-    if (x < 0 || y < 0 || x >= (int)fb->variable.xres || y >= (int)fb->variable.yres) return;
-
-    x += (int)fb->variable.xoffset;
-    y += (int)fb->variable.yoffset;
-    offset = (size_t)y * fb->fixed.line_length + (size_t)x * (size_t)fb->bytes_per_pixel;
-    if (offset + (size_t)fb->bytes_per_pixel > fb->memory_size) return;
-
-    pixel = mrbe_component(color.r, fb->variable.red) |
-            mrbe_component(color.g, fb->variable.green) |
-            mrbe_component(color.b, fb->variable.blue);
-
-    memcpy(fb->memory + offset, &pixel, (size_t)fb->bytes_per_pixel);
-}
 
 int mrbe_fb_open(MrbeFramebuffer *fb, const char *device)
 {
@@ -90,11 +71,51 @@ void mrbe_fb_close(MrbeFramebuffer *fb)
 
 void mrbe_fb_fill_rect(MrbeFramebuffer *fb, int x, int y, int width, int height, MrbeColor color)
 {
-    int xx, yy;
-    if (!fb || width <= 0 || height <= 0) return;
-    for (yy = y; yy < y + height; ++yy)
-        for (xx = x; xx < x + width; ++xx)
-            mrbe_pixel(fb, xx, yy, color);
+    int x0, y0, x1, y1, yy;
+    uint32_t pixel;
+
+    if (!fb || !fb->memory || width <= 0 || height <= 0) return;
+
+    /* Clip once, then use a tight row loop. This is substantially faster than
+       calling mrbe_pixel() for every pixel when the TV launcher redraws a frame. */
+    x0 = x < 0 ? 0 : x;
+    y0 = y < 0 ? 0 : y;
+    x1 = x + width;
+    y1 = y + height;
+    if (x1 > (int)fb->variable.xres) x1 = (int)fb->variable.xres;
+    if (y1 > (int)fb->variable.yres) y1 = (int)fb->variable.yres;
+    if (x0 >= x1 || y0 >= y1) return;
+
+    pixel = mrbe_component(color.r, fb->variable.red) |
+            mrbe_component(color.g, fb->variable.green) |
+            mrbe_component(color.b, fb->variable.blue);
+
+    for (yy = y0; yy < y1; ++yy) {
+        size_t offset = (size_t)(yy + (int)fb->variable.yoffset) *
+                        (size_t)fb->fixed.line_length +
+                        (size_t)(x0 + (int)fb->variable.xoffset) *
+                        (size_t)fb->bytes_per_pixel;
+        uint8_t *row;
+        int xx;
+        if (offset >= fb->memory_size) continue;
+        row = fb->memory + offset;
+
+        if (fb->bytes_per_pixel == 4) {
+            uint32_t *dst = (uint32_t *)row;
+            for (xx = x0; xx < x1; ++xx) *dst++ = pixel;
+        } else if (fb->bytes_per_pixel == 2) {
+            uint16_t value = (uint16_t)pixel;
+            uint16_t *dst = (uint16_t *)row;
+            for (xx = x0; xx < x1; ++xx) *dst++ = value;
+        } else {
+            for (xx = x0; xx < x1; ++xx) {
+                row[0] = (uint8_t)(pixel & 0xffu);
+                row[1] = (uint8_t)((pixel >> 8) & 0xffu);
+                row[2] = (uint8_t)((pixel >> 16) & 0xffu);
+                row += 3;
+            }
+        }
+    }
 }
 
 void mrbe_fb_clear(MrbeFramebuffer *fb, MrbeColor color)
@@ -176,22 +197,49 @@ void mrbe_fb_draw_rgba(MrbeFramebuffer *fb, const MrbeImage *image,
                        int x, int y, int width, int height, MrbeColor under)
 {
     int dx, dy;
-    if (!fb || !image || !image->pixels || image->width <= 0 || image->height <= 0 ||
-        width <= 0 || height <= 0) return;
+    if (!fb || !fb->memory || !image || !image->pixels ||
+        image->width <= 0 || image->height <= 0 || width <= 0 || height <= 0)
+        return;
+
+    /* Fast nearest-neighbour blit. Opaque pixels bypass mrbe_pixel() so large
+       cinematic artwork does not turn the framebuffer renderer into a CPU bottleneck. */
     for (dy = 0; dy < height; ++dy) {
-        int sy = (int)((long long)dy * image->height / height);
+        int dest_y = y + dy;
+        int src_y = (int)((long long)dy * image->height / height);
+        size_t row_offset;
+        if (dest_y < 0 || dest_y >= (int)fb->variable.yres) continue;
+        dest_y += (int)fb->variable.yoffset;
+        row_offset = (size_t)dest_y * fb->fixed.line_length;
         for (dx = 0; dx < width; ++dx) {
+            int dest_x = x + dx;
+            int src_x, a;
             const uint8_t *src;
-            unsigned int a;
             MrbeColor out;
-            int sx = (int)((long long)dx * image->width / width);
-            src = image->pixels + ((size_t)sy * (size_t)image->width + (size_t)sx) * 4u;
+            uint32_t pixel;
+            size_t offset;
+            if (dest_x < 0 || dest_x >= (int)fb->variable.xres) continue;
+            dest_x += (int)fb->variable.xoffset;
+            src_x = (int)((long long)dx * image->width / width);
+            src = image->pixels +
+                  ((size_t)src_y * (size_t)image->width + (size_t)src_x) * 4u;
             a = src[3];
             if (a == 0) continue;
-            out.r = (uint8_t)(((unsigned int)src[0] * a + (unsigned int)under.r * (255u-a)) / 255u);
-            out.g = (uint8_t)(((unsigned int)src[1] * a + (unsigned int)under.g * (255u-a)) / 255u);
-            out.b = (uint8_t)(((unsigned int)src[2] * a + (unsigned int)under.b * (255u-a)) / 255u);
-            mrbe_pixel(fb, x + dx, y + dy, out);
+            if (a == 255) {
+                out.r = src[0]; out.g = src[1]; out.b = src[2];
+            } else {
+                out.r = (uint8_t)(((unsigned int)src[0] * (unsigned int)a +
+                                   (unsigned int)under.r * (unsigned int)(255-a)) / 255u);
+                out.g = (uint8_t)(((unsigned int)src[1] * (unsigned int)a +
+                                   (unsigned int)under.g * (unsigned int)(255-a)) / 255u);
+                out.b = (uint8_t)(((unsigned int)src[2] * (unsigned int)a +
+                                   (unsigned int)under.b * (unsigned int)(255-a)) / 255u);
+            }
+            pixel = mrbe_component(out.r, fb->variable.red) |
+                    mrbe_component(out.g, fb->variable.green) |
+                    mrbe_component(out.b, fb->variable.blue);
+            offset = row_offset + (size_t)dest_x * (size_t)fb->bytes_per_pixel;
+            if (offset + (size_t)fb->bytes_per_pixel > fb->memory_size) continue;
+            memcpy(fb->memory + offset, &pixel, (size_t)fb->bytes_per_pixel);
         }
     }
 }

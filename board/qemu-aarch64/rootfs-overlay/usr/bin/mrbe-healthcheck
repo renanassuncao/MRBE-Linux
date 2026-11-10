@@ -1,0 +1,68 @@
+#!/bin/sh
+# One-shot system, framebuffer, input and network health report.
+set -u
+FAIL=0
+
+ok() { printf '[OK] %s\n' "$1"; }
+warn() { printf '[WARN] %s\n' "$1"; }
+fail() { printf '[FAIL] %s\n' "$1"; FAIL=1; }
+
+printf '%s\n' '=== MRBE TV OS HEALTHCHECK ==='
+printf 'Version: '; cat /etc/mrbe-version 2>/dev/null || echo unknown
+printf 'Kernel: '; uname -r
+printf 'Uptime: '; cut -d ' ' -f 1 /proc/uptime 2>/dev/null || echo unknown
+
+if [ -c /dev/fb0 ]; then ok 'Framebuffer /dev/fb0'; else fail 'Framebuffer /dev/fb0 unavailable'; fi
+if ls /dev/input/event* >/dev/null 2>&1; then ok 'Input event device detected'; else warn 'No evdev device detected'; fi
+
+if [ -r /sys/class/net/eth0/operstate ]; then
+    state=$(cat /sys/class/net/eth0/operstate)
+    [ "$state" = 'up' ] && ok "eth0 link: $state" || warn "eth0 link: $state"
+else
+    warn 'eth0 interface not found'
+fi
+
+if command -v ip >/dev/null 2>&1; then
+    if ip -4 -o addr show dev eth0 2>/dev/null | grep -q 'inet '; then
+        ip -4 -o addr show dev eth0 | sed 's/^/[NET] /'
+        ok 'IPv4 address assigned'
+    else
+        fail 'No IPv4 address on eth0 (DHCP may have failed)'
+    fi
+    if ip route show default 2>/dev/null | grep -q '^default '; then
+        ip route show default | sed 's/^/[NET] /'
+        ok 'Default route present'
+    else
+        fail 'Default route missing'
+    fi
+else
+    warn 'ip utility unavailable; skipping address/route detail'
+fi
+
+if grep -q '^nameserver ' /etc/resolv.conf 2>/dev/null; then
+    sed -n 's/^nameserver /[DNS] nameserver /p' /etc/resolv.conf
+    ok 'DNS resolver configured'
+else
+    fail 'No DNS nameserver configured'
+fi
+
+if command -v curl >/dev/null 2>&1; then
+    curl --version | head -n 1
+    ok 'curl available for API diagnostics'
+else
+    fail 'curl missing; API tests unavailable'
+fi
+
+if [ -s /run/mrbe-launcher.pid ]; then
+    pid=$(cat /run/mrbe-launcher.pid)
+    if kill -0 "$pid" 2>/dev/null; then ok "Launcher process alive (PID $pid)"; else fail 'Launcher PID file exists but process is not alive'; fi
+else
+    warn 'Launcher PID file not found'
+fi
+
+if [ "$FAIL" -eq 0 ]; then
+    echo '[PASS] Healthcheck completed without critical failures.'
+    exit 0
+fi
+echo '[FAIL] One or more critical checks failed.'
+exit 1

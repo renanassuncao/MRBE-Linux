@@ -1,0 +1,100 @@
+#!/bin/sh
+# Runtime stability monitor. Default: 5 minutes, one sample every 10 seconds.
+set -u
+DURATION="${MRBE_STABILITY_DURATION:-300}"
+INTERVAL="${MRBE_STABILITY_INTERVAL:-10}"
+MIN_MEM_KB="${MRBE_STABILITY_MIN_MEM_KB:-65536}"
+MAX_RSS_GROWTH_KB="${MRBE_STABILITY_MAX_RSS_GROWTH_KB:-65536}"
+REQUIRE_LAUNCHER="${MRBE_STABILITY_REQUIRE_LAUNCHER:-1}"
+API_INTERVAL="${MRBE_STABILITY_API_INTERVAL:-0}"
+PIDFILE="${MRBE_LAUNCHER_PIDFILE:-/run/mrbe-launcher.pid}"
+LOGFILE="${MRBE_STABILITY_LOG:-/var/log/mrbe-stability.log}"
+
+case "$DURATION:$INTERVAL:$MIN_MEM_KB:$MAX_RSS_GROWTH_KB:$API_INTERVAL" in
+    *[!0-9:]*|:*|*:) echo '[FAIL] Numeric stability settings required.'; exit 2 ;;
+esac
+[ "$INTERVAL" -gt 0 ] || { echo '[FAIL] Interval must be greater than zero.'; exit 2; }
+
+mkdir -p "$(dirname "$LOGFILE")" 2>/dev/null || true
+: > "$LOGFILE" || { echo "[FAIL] Cannot write $LOGFILE"; exit 2; }
+
+log() {
+    line="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null) $*"
+    echo "$line" | tee -a "$LOGFILE"
+}
+mem_available() {
+    awk '/^MemAvailable:/ {print $2; found=1} END {if (!found) print 0}' /proc/meminfo
+}
+process_rss() {
+    pid="$1"
+    awk '/^VmRSS:/ {print $2; found=1} END {if (!found) print 0}' "/proc/$pid/status" 2>/dev/null
+}
+
+PID=''
+BASE_RSS=0
+if [ -s "$PIDFILE" ]; then
+    PID=$(cat "$PIDFILE")
+    BASE_RSS=$(process_rss "$PID")
+fi
+if [ "$REQUIRE_LAUNCHER" = '1' ] && { [ -z "$PID" ] || ! kill -0 "$PID" 2>/dev/null; }; then
+    log '[FAIL] MRBE launcher is not running before stability test.'
+    exit 1
+fi
+
+log "[START] duration=${DURATION}s interval=${INTERVAL}s pid=${PID:-not-required} base_rss=${BASE_RSS}KB"
+FAIL=0
+MIN_SEEN=999999999
+MAX_RSS_SEEN="$BASE_RSS"
+ELAPSED=0
+
+while [ "$ELAPSED" -le "$DURATION" ]; do
+    AVAILABLE=$(mem_available)
+    [ "$AVAILABLE" -lt "$MIN_SEEN" ] && MIN_SEEN="$AVAILABLE"
+    if [ "$AVAILABLE" -lt "$MIN_MEM_KB" ]; then
+        log "[FAIL] Available memory ${AVAILABLE}KB below threshold ${MIN_MEM_KB}KB."
+        FAIL=1
+    fi
+
+    if [ -n "$PID" ]; then
+        if ! kill -0 "$PID" 2>/dev/null; then
+            log "[FAIL] Launcher process $PID stopped during test."
+            FAIL=1
+            break
+        fi
+        RSS=$(process_rss "$PID")
+        [ "$RSS" -gt "$MAX_RSS_SEEN" ] && MAX_RSS_SEEN="$RSS"
+        GROWTH=$((RSS - BASE_RSS))
+        if [ "$GROWTH" -gt "$MAX_RSS_GROWTH_KB" ]; then
+            log "[FAIL] Launcher RSS grew ${GROWTH}KB (limit ${MAX_RSS_GROWTH_KB}KB)."
+            FAIL=1
+        fi
+    else
+        RSS=0
+        GROWTH=0
+    fi
+
+    log "[SAMPLE] elapsed=${ELAPSED}s mem_available=${AVAILABLE}KB launcher_rss=${RSS}KB rss_growth=${GROWTH}KB"
+
+    if [ "$API_INTERVAL" -gt 0 ] && [ $((ELAPSED % API_INTERVAL)) -eq 0 ]; then
+        if /usr/bin/mrbe-api-test >> "$LOGFILE" 2>&1; then
+            log '[API] endpoint check passed'
+        else
+            log '[FAIL] API endpoint check failed during stability test.'
+            FAIL=1
+        fi
+    fi
+
+    [ "$ELAPSED" -ge "$DURATION" ] && break
+    STEP="$INTERVAL"
+    REMAINING=$((DURATION - ELAPSED))
+    [ "$STEP" -gt "$REMAINING" ] && STEP="$REMAINING"
+    sleep "$STEP"
+    ELAPSED=$((ELAPSED + STEP))
+done
+
+if [ "$FAIL" -eq 0 ]; then
+    log "[PASS] stability test completed; min_mem=${MIN_SEEN}KB max_launcher_rss=${MAX_RSS_SEEN}KB"
+    exit 0
+fi
+log '[FAIL] stability test completed with one or more failures.'
+exit 1

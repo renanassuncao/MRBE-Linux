@@ -1,20 +1,31 @@
-# MRBE Linux TV 0.4.0 — Estado do projeto
+# MRBE TV OS 0.7.0 — Estado da fase de estabilidade
 
-## Entregue nesta versão
-- Brasão oficial MRBE integrado ao launcher como asset RGBA, com fallback vetorial.
-- Paleta de identidade: carvão, verde-esmeralda, ouro e prata.
-- Home, Apps e Configurações atualizadas com a identidade visual.
-- Asset instalado em `/usr/share/mrbe/brand/brasao-256.rgba`.
-- Renderizador framebuffer preservado para não quebrar o boot já validado na versão anterior.
-- Testes locais e prévias host devem ser executados com `make test`.
+## Identidade visual
+A Home 0.6.0 aprovada permanece congelada, sem alteração de layout nesta fase.
 
-## Validação pendente no computador do usuário
-- `JOBS=2 make ui-rebuild` para atualizar apenas o launcher e regenerar as imagens.
-- `make smoke` para confirmar o boot da imagem 0.4.0 no QEMU.
-- `make gui` para conferir o brasão e a interface na janela QEMU.
+## Implementado no código-fonte
+- curl/libcurl com backend OpenSSL e bundle CA selecionados no Buildroot.
+- `mrbe-healthcheck`, `mrbe-api-test` e `mrbe-stability-test` no rootfs overlay.
+- Testes HTTP/HTTPS locais determinísticos, incluindo certificado confiável e não confiável.
+- Monitoramento de MemAvailable, processo launcher e RSS por padrão durante 5 minutos.
+- Smoke test exige marcador de presença do cliente API e bundle CA.
 
-## Limites conhecidos
-- QEMU `virt` ARM64 é plataforma virtual, não firmware/BIOS do MXQ Pro.
-- Catálogo, apps, streaming, áudio e ações de energia continuam demonstrativos.
-- A imagem do brasão foi gerada para o projeto; confirme a licença escolhida para os assets antes de publicar o repositório.
-- Migração para LVGL está planejada como etapa seguinte, mantendo fbdev como backend de baixo consumo.
+## Validação host
+- `make api-test`: 13 testes aprovados.
+- `make test`: 33 testes aprovados.
+- Clang Static Analyzer: sem diagnósticos nos seis fontes C.
+- AddressSanitizer/UndefinedBehaviorSanitizer: harness UI e 20 mil eventos aprovados.
+- API pública: DNS não resolvido neste ambiente de revisão; teste externo pendente no QEMU do usuário.
+
+## Pendente no ambiente do usuário
+- Build ARM64 Buildroot 0.7.0 no WSL.
+- `make check` e `make smoke` no WSL.
+- Boot gráfico 0.7.0 no QEMU.
+- `mrbe-healthcheck` e `mrbe-api-test` no guest com internet.
+- Teste de estabilidade de 300 segundos no guest.
+
+## Limites
+- Nenhuma API comercial/streaming foi integrada.
+- Endpoint padrão é JSONPlaceholder, apenas para testar transporte e payload JSON.
+- Sem credenciais de produção.
+- QEMU virt não é equivalente ao S905X3 físico.

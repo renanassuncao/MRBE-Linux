@@ -1,31 +1,42 @@
 #!/bin/sh
-# SysV init, keep the QEMU serial console available for diagnostics.
+# MRBE TV OS 0.7.0: keep serial login for diagnostics and launch the framebuffer UI.
 PIDFILE=/run/mrbe-launcher.pid
+LOGFILE=/var/log/mrbe-launcher.log
+
 start() {
     mkdir -p /var/log /run
-    echo "[MRBE] userspace pronto; versao 0.4.0"
+    echo "[MRBE] userspace pronto; versao 0.7.0"
     echo "MRBE_BOOT_OK"
+    if [ -x /usr/bin/mrbe-api-test ] && [ -x /usr/bin/curl ] && [ -s /etc/ssl/certs/ca-certificates.crt ]; then
+        echo "MRBE_API_TOOLS_READY"
+    else
+        echo "[MRBE] API diagnostics/curl/CA bundle incompletos"
+    fi
     [ -x /usr/bin/mrbe-launcher ] || { echo '[MRBE] launcher ausente'; return 1; }
+
     if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
         echo '[MRBE] launcher ja iniciado'
         return 0
     fi
+
     (
         n=0
-        # GPU virtio pode aparecer depois do inicio do init.
         while [ ! -c /dev/fb0 ] && [ "$n" -lt 30 ]; do
             sleep 1
             n=$((n + 1))
         done
+
         if [ ! -c /dev/fb0 ]; then
-            echo '[MRBE] /dev/fb0 indisponivel: modo console ativo'
+            echo "[MRBE] /dev/fb0 indisponivel apos ${n}s; modo console ativo" >> "$LOGFILE"
             exit 0
         fi
-        echo '[MRBE] framebuffer encontrado, iniciando interface TV'
+
+        echo "[MRBE] framebuffer encontrado; iniciando MRBE TV OS 0.7.0" >> "$LOGFILE"
         exec /usr/bin/mrbe-launcher
-    ) >> /var/log/mrbe-launcher.log 2>&1 &
+    ) >> "$LOGFILE" 2>&1 &
     echo $! > "$PIDFILE"
 }
+
 stop() {
     if [ -f "$PIDFILE" ]; then
         pid=$(cat "$PIDFILE")
@@ -33,6 +44,7 @@ stop() {
         rm -f "$PIDFILE"
     fi
 }
+
 case "$1" in
     start) start ;;
     stop) stop ;;
