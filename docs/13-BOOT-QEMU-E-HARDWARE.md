@@ -2,7 +2,9 @@
 
 ## QEMU nesta versao
 Caminho real: `qemu-system-aarch64 -machine virt -kernel Image` -> Linux ->
-rootfs ext4 virtio-blk -> BusyBox init -> `S99mrbe` -> interface framebuffer.
+rootfs ext4 virtio-blk -> BusyBox init -> `S05mrbe-launcher` -> interface framebuffer.
+O launcher sobe antes da rede; `S99mrbe`, o ultimo script, so
+imprime `MRBE_BOOT_OK`. O `/dev` vem do devtmpfs do kernel, sem mdev.
 O QEMU entrega DTB generico da maquina virtual. **Nao carrega a BIOS do MXQ Pro**.
 
 ## Por que nao ha BIOS no TV Box

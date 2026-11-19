@@ -20,4 +20,16 @@ CONFIG_INPUT_EVDEV=y
 CONFIG_VIRTIO_INPUT=y
 CONFIG_SERIAL_AMBA_PL011=y
 CONFIG_SERIAL_AMBA_PL011_CONSOLE=y
+# Padroes do kernel que o sistema usa; fixados aqui para uma config nova
+# nao perde-los: /dev/fb0, modo grafico do virtio-gpu, scripts #!/bin/sh,
+# barramento PCI do virt, DHCP (AF_PACKET), syslog (AF_UNIX) e relogio.
+CONFIG_PCI_HOST_GENERIC=y
+CONFIG_DRM_VIRTIO_GPU_KMS=y
+CONFIG_FB_DEVICE=y
+CONFIG_BINFMT_SCRIPT=y
+CONFIG_INET=y
+CONFIG_PACKET=y
+CONFIG_UNIX=y
+CONFIG_RTC_CLASS=y
+CONFIG_RTC_DRV_PL031=y
 # Nao ativar recursos desktop (GNOME/Wayland/X11) no perfil minimo.

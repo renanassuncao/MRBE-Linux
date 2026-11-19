@@ -25,5 +25,14 @@ Computer Organization*. Uso aplicado de conceitos, sem reproduzir trechos do liv
 
 ## Registrar desempenho
 `free -m`, `cat /proc/meminfo`, `ps`, `dmesg | grep -i oom`.
+
+`make profile` mede o boot no QEMU. Um boot com `initcall_debug` mostra as
+initcalls mais lentas do kernel, o instante em que o kernel chama `/sbin/init` e
+os maiores intervalos do console antes de `MRBE_BOOT_OK`. Outro boot, sem
+instrumentacao, le `/proc/meminfo` e o RSS de cada processo com o launcher na
+tela. Mais cinco boots (`PROFILE_RUNS`) dao a mediana ate `MRBE_BOOT_OK`. O
+relatorio fica em `logs/testes/boot-profile-latest.json`. Sob TCG os tempos
+servem para comparar versoes, nao para prever o hardware real.
+
 Para latencia, registrar timestamps de entrada/evento e frame concluido;
 ainda nao ha instrumentacao pronta. Nao inventar valores.

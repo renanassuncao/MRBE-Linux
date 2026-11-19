@@ -6,19 +6,36 @@ class TestProject(unittest.TestCase):
     def test_tree(self):
         for f in ('VERSION','external.desc','external.mk','Config.in',
                   'configs/mrbe_qemu_aarch64_defconfig',
+                  'board/qemu-aarch64/linux.config',
                   'board/qemu-aarch64/linux.fragment',
+                  'board/qemu-aarch64/rootfs-overlay/etc/init.d/S05mrbe-launcher',
                   'board/qemu-aarch64/rootfs-overlay/etc/init.d/S99mrbe'):
             self.assertTrue((ROOT/f).is_file(),f)
     def test_config(self):
         c=(ROOT/'configs/mrbe_qemu_aarch64_defconfig').read_text()
         self.assertIn('BR2_aarch64=y',c)
         self.assertIn('BR2_TOOLCHAIN_BUILDROOT_MUSL=y',c)
-        self.assertIn('BR2_LINUX_KERNEL_USE_ARCH_DEFAULT_CONFIG=y',c)
+        self.assertIn('BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="$(BR2_EXTERNAL_MRBE_PATH)/board/qemu-aarch64/linux.config"',c)
         self.assertNotIn('board/qemu/aarch64-virt/linux.config',c)
         self.assertNotIn('BR2_GLOBAL_PATCH_DIR="board/qemu/patches"',c)
+    def test_kernel_config(self):
+        # O que o boot, o launcher e a rede precisam, embutido (sem modulos).
+        k=(ROOT/'board/qemu-aarch64/linux.config').read_text()+(ROOT/'board/qemu-aarch64/linux.fragment').read_text()
+        for opt in ('VIRTIO_MMIO','VIRTIO_PCI','PCI_HOST_GENERIC','VIRTIO_BLK','EXT4_FS',
+                    'DEVTMPFS_MOUNT','SERIAL_AMBA_PL011_CONSOLE','DRM_VIRTIO_GPU','DRM_VIRTIO_GPU_KMS',
+                    'DRM_FBDEV_EMULATION','FB_DEVICE','FRAMEBUFFER_CONSOLE','INPUT_EVDEV',
+                    'VIRTIO_INPUT','VIRTIO_NET','INET','PACKET','UNIX','RTC_DRV_PL031','BINFMT_SCRIPT'):
+            self.assertIn(f'CONFIG_{opt}=y',k,opt)
+        self.assertNotIn('CONFIG_MODULES=y',k)
     def test_boot_marker(self):
         s=(ROOT/'board/qemu-aarch64/rootfs-overlay/etc/init.d/S99mrbe').read_text()
         self.assertIn('MRBE_BOOT_OK',s)
+    def test_launcher_starts_before_network(self):
+        # Sem cabo, o DHCP de S40network segura o boot; a tela nao deve esperar.
+        init=ROOT/'board/qemu-aarch64/rootfs-overlay/etc/init.d'
+        launcher=[f.name for f in init.iterdir() if 'exec /usr/bin/mrbe-launcher' in f.read_text()]
+        self.assertEqual(launcher,['S05mrbe-launcher'])
+        self.assertLess(int(launcher[0][1:3]),40)
     def test_status(self):
         s=json.loads((ROOT/'status.json').read_text())
         self.assertEqual(s['version'],'0.4.0')

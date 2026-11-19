@@ -1,0 +1,2 @@
+# Sem crontab no sistema: crond so acordaria a cada minuto para nada.
+# CONFIG_CROND is not set

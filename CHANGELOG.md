@@ -1,5 +1,13 @@
 # Changelog
 
+## Nao lancado
+- `make profile`: perfil de boot no QEMU com as initcalls mais lentas, o kernel ate o init, os maiores intervalos do console e a memoria com o launcher na tela.
+- Launcher sobe em `S05mrbe-launcher`, antes da rede: a tela aparece em 1,8 s em vez de 4,5 s no QEMU, e sem cabo de rede nao espera mais o DHCP (eram 7,9 s).
+- `/dev` vem do devtmpfs do kernel; sai o mdev, cujo coldplug gastava 2,2 s para carregar um modulo que nada usa. Sai o `crond`, que nao tinha crontab.
+- `build.sh` reaplica o defconfig quando ele ou um fragment mudam e reinstala o rootfs; antes a mudanca nunca chegava a quem ja tinha compilado.
+- Kernel com config sob medida para o QEMU virt (`board/qemu-aarch64/linux.config`), sem modulos: `Image` de 38,8 para 7,5 MB, kernel ate o init de 0,73 para 0,32 s, 71 MiB a mais de memoria livre, kernel compila em 55 s em vez de 372 s. Detalhes em `docs/22-KERNEL-SOB-MEDIDA.md`.
+- `check-build.sh` falha se uma opcao do `linux.fragment` nao chegou a `.config` do kernel.
+
 ## 0.4.0 - 2026-11-06
 - Adota o brasao MRBE com coroa, escudo, monitor/play e mascote Linux como identidade do sistema.
 - Integra o asset RGBA transparente ao launcher framebuffer, sem biblioteca de imagem adicional.
